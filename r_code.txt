@@ -1,0 +1,161 @@
+
+install.packages("data.table",repo="http://cran.nexr.com")
+install.packages("rJava",repo="http://cran.nexr.com")
+install.packages("KoNLP",repo="http://cran.nexr.com")
+install.packages("arules",repo="http://cran.nexr.com")
+install.packages("igraph",repo="http://cran.nexr.com")
+install.packages("combinat",repo="http://cran.nexr.com")
+install.packages("tm",repo="http://cran.nexr.com")
+install.packages("proxy",repo="http://cran.nexr.com")
+
+library(data.table)
+library(rJava)
+library(KoNLP)
+library(arules)
+library(igraph)
+library(combinat)
+library(tm)
+library(GMD)
+library(proxy)
+useSejongDic()
+
+setwd("C:\\Users\\qqq64\\OneDrive\\바탕 화면\\work")
+Data<-fread("dataAll.csv",select=c(2,4,6))
+Data <- as.data.frame(Data)
+Data$postTime<-as.POSIXlt(as.character(Data$postTime)) 
+
+head(Data)
+set.seed(1234)
+Data<-Data[sample(nrow(Data),300),]
+
+
+Data$contents<-gsub("flash 오류를 우회하기 위한 함수 추가function _flash_removeCallback()","",Data$contents)
+Data$contents<-gsub("\\//","",Data$contents)
+Data$contents<-gsub("\\()","",Data$contents)
+Data$contents<-gsub("\\{}","",Data$contents)
+
+DataContents <- sapply(Data[,3], function(x) {paste(extractNoun(x), collapse=" ")}) 
+
+myCorpus<- Corpus(VectorSource(DataContents))
+
+myCorpus<- tm_map(myCorpus, removePunctuation)
+
+myCorpus<- tm_map(myCorpus, removeNumbers)
+
+myCorpus<- tm_map(myCorpus, tolower)
+
+
+myTdm <- TermDocumentMatrix(myCorpus, control = list(weighting = function(x) weightTfIdf(x, normalize = TRUE)))
+myDtm<-t((as.matrix(myTdm)))
+
+k.max <- 20
+data <- dist(myDtm, method="cosine")
+
+wss <- sapply(1:k.max, 
+              function(k){kmeans(data, k, nstart=50,iter.max = 15 )$tot.withinss})
+wss
+plot(1:k.max, wss,
+     type="b", pch = 19, frame = FALSE, 
+     xlab="Number of clusters K",
+     ylab="Total within-clusters sum of squares")
+
+
+    
+clust<-kmeans(data,16)
+class_table<-table(clust$cluster)    
+
+
+value <- list()
+for(i in 1:length(class_table)){
+
+
+   value[[i]] <- Data[which(clust$cluster==as.numeric(names(class_table)[i])),]
+}    
+    
+value[[3]]$title    
+
+cluster3Contens <- value[[3]][[3]]
+
+
+
+
+install.packages("SnowballC",repo="http://cran.nexr.com")
+install.packages("wordcloud",repo="http://cran.nexr.com")
+install.packages("RColorBrewer",repo="http://cran.nexr.com")
+
+
+library(SnowballC)
+library(wordcloud)
+library(RColorBrewer)
+
+
+wordcloud(cluster3Contens, max.words = 100, min.freq = 3, random.order = FALSE, rot.per = 0.1, colors = brewer.pal(8, "Dark2"))
+
+
+sentence <- c()
+x<-Data[which(clust$cluster==as.numeric(names(class_table)[3])),3]
+
+for(i in 1:(length(x))){
+
+ii <- strsplit(x[i], ".", TRUE)[[1]]               
+
+sentence <- c(sentence,ii)      
+
+}
+
+
+temp <- c()
+
+for(i in 1:length(sentence)){
+
+      
+
+temp[i] <- tryCatch(paste(extractNoun(sentence[i]), collapse = " "), error=function(e) 1)
+
+}
+
+
+myCorpus_2 <- Corpus(VectorSource(temp))
+
+
+myCorpus_2 <- tm_map(myCorpus_2, removePunctuation)
+
+
+myCorpus_2 <- tm_map(myCorpus_2, removeNumbers)
+
+myCorpus_2 <- tm_map(myCorpus_2, tolower)
+
+myTdm2 <- TermDocumentMatrix(myCorpus_2)
+myTdm2 <- as.matrix(removeSparseTerms(myTdm2, sparse = .7))
+
+value1 <- c()
+for(i in 1:dim(myTdm2)[2]){      
+
+value1[i] <- length(which(myTdm2[,i]>0))      
+
+}
+
+
+value3 <- sentence[which(value1>=as.numeric(names(table(value1)[length(table(value1))])))]
+
+countNoun <- c()
+
+if(length(value3)>1)
+
+{
+
+   for(i in 1:length(value3))
+
+   {
+
+   countNoun<-c(countNoun,length(gregexpr(" ", value3[i])[[1]]))
+
+   }   
+
+}
+
+value3[which(max(countNoun) == countNoun)]   
+
+
+
+
