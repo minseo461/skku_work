@@ -1,0 +1,7 @@
+<네이버뉴스 오픈소스 github>
+https://github.com/mrchypark/naverNewsParser
+
+<k-means >
+https://blog.naver.com/zxy826/220733174637
+https://blog.naver.com/pica4star/221000348938
+http://stat-and-news-by-daragon9.tistory.com/111
